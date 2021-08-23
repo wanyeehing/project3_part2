@@ -1,0 +1,149 @@
+---
+title: "Project 3: project3package Tutorial"
+author: "Wan Yee Hing"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{project3package Tutorial}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+In Statistics, we talk a lot about statistical inference and prediction. So, we
+introduce `project3package` here to provide some functions to handle
+statistical inference and statistical prediction. Specifically,
+`project3package` provides four functions:
+* my_t.test function
+* my_lm function
+* my_knn_cv function
+* my_rf_cv function
+
+To install `project3package`, use the following code:
+```{r install, eval = FALSE}
+devtools::install_github("wanyeehing/project3package")
+```
+
+To begin, we load the `project3package`.
+```{r setup}
+library(ggplot2)
+my_penguins <- read.csv("../Data/my_penguins.csv")
+source("../Code/my_rf_cv.R")
+```
+
+In this tutorial, I will be using data from `gapminder` and `palmerpenguins`
+package to demonstrate the functions.
+
+## Tutorial for my_rf_cv
+
+The function `my_rf_cv` is doing random forest cross-validation. This section
+will demonstrate how to use this function. We are going to use `my_rf_cv`
+to predict `body_mass_g` using covariates `bill_length_mm`, `bill_depth_mm`,
+and `flipper_length_mm`.
+
+In this tutorial, we will do random forest cross-validation for `k` value
+2, 5, and 10. For each of the value of `k`, we will call our `my_rf_cv`
+function for 30 times and record the respective mean squared error (MSE).
+```{r}
+all_mse <- matrix(NA, nrow = 30, ncol = 3)
+counter <- 1
+
+for (i in c(2, 5, 10)) {
+  for (j in 1:30) {
+    all_mse[j, counter] <- my_rf_cv(i)
+  }
+  counter <- counter + 1
+}
+```
+
+Now, we will plot a box plot for each `k` value.
+```{r}
+k2_df <- data.frame("x" = "2",
+                    "y" = all_mse[, 1])
+k2_boxplot <- ggplot(k2_df, aes(x = x, y = y)) +
+  geom_boxplot(fill = "lightgreen") +
+  theme_bw(base_size = 14) +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  face = "bold",
+                                  size = 16)) +
+  labs(title = "Estimated MSE for k = 2",
+       x = "k value",
+       y = "MSE")
+k2_boxplot
+
+k5_df <- data.frame("x" = "5",
+                    "y" = all_mse[, 2])
+k5_boxplot <- ggplot(k5_df, aes(x = x, y = y)) +
+  geom_boxplot(fill = "lightgreen") +
+  theme_bw(base_size = 14) +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  face = "bold",
+                                  size = 16)) +
+  labs(title = "Estimated MSE for k = 5",
+       x = "k value",
+       y = "MSE")
+k5_boxplot
+
+k10_df <- data.frame("x" = "10",
+                     "y" = all_mse[, 3])
+k10_boxplot <- ggplot(k10_df, aes(x = x, y = y)) +
+  geom_boxplot(fill = "lightgreen") +
+  theme_bw(base_size = 14) +
+  theme(plot.title = element_text(hjust = 0.5,
+                                  face = "bold",
+                                  size = 16)) +
+  labs(title = "Estimated MSE for k = 10",
+       x = "k value",
+       y = "MSE")
+k10_boxplot
+```
+
+```{r}
+# Save the plots
+ggsave(filename = "k2_boxplot", plot = k2_boxplot, device = "pdf",
+       path = "../Output/Figures")
+ggsave(filename = "k5_boxplot", plot = k5_boxplot, device = "pdf",
+       path = "../Output/Figures")
+ggsave(filename = "k10_boxplot", plot = k10_boxplot, device = "pdf",
+       path = "../Output/Figures")
+```
+
+Then, I created a table that shows the average CV estimate and the standard
+deviation of the CV estimates across k.
+```{r}
+ave_err <- c()
+sd_err <- c()
+for (i in 1:3) {
+  ave_err[i] <- mean(all_mse[,  i])
+  sd_err[i] <- sd(all_mse[, i])
+}
+
+result_mat <- cbind(ave_err, sd_err)
+colnames(result_mat) <- c("mean", "sd")
+rownames(result_mat) <- c("k = 2", "k = 5", "k = 10")
+result_mat
+```
+
+```{r}
+# Save the table into Results folder
+saveRDS(result_mat, file = "summary_stats.rds")
+write.csv("summary_stats.rds", file = "../Output/Results/summary_stats.csv")
+saveRDS(all_mse, file = "sim_result.rds")
+write.csv("sim_result.rds", file = "../Output/Results/sim_result.csv")
+```
+
+From the boxplots, we can see that the model with `k` = 10 has the lowest
+interquartile range compare to the other two. It is the only one that contain
+outlier. From the table, I see that the mean accross different `k`s are
+similar, with `k` = 2 has the highest value of mean CV estimate and `k` = 10
+has the lowest mean CV estimate value. Also, the model with `k` = 2 has the
+highest value of standard deviation of the CV estimates while `k` = 10 has
+the lowest. It happens because when the value of `k` increases, the variance
+decreases.
